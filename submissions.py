@@ -20,7 +20,7 @@ from email.mime.text import MIMEText
 from email.utils import formatdate, formataddr
 
 # Pattern for a corrected submission file name
-PC = re.compile(r"(^(?!\.|.*\.\.).+\@.+\..+)_(\d+)_corrected\.pdf$")
+PC = re.compile(r"(^(?!\.|.*\.\.).+[^.]\@.+\..+)_(\d+)_corrected\.pdf$")
 
 
 def connect():
