@@ -4,9 +4,7 @@
 Sends corrected submissions to the email address contained in the submission
 file name.
 
-The script will only work if there are corrected submissions for only one
-exercise sheet in the directory that in which the script is ran. See
-README.md for more details.
+See README.md for more details.
 """
 
 import os
@@ -20,6 +18,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 from email.utils import formatdate, formataddr
+
+# Pattern for a corrected submission file name
+PC = re.compile(r"(^(?!\.|.*\.\.).+\@.+\..+)_(\d+)_corrected\.pdf$")
 
 
 def connect():
@@ -59,18 +60,17 @@ def has_multiple_sheets(submission_files):
     Returns:
         bool: Indicates the multiplicity.
     """
-    pattern = re.compile(r'\d+_corrected\.pdf$')
-    endings = [re.findall(pattern, f)[0] for f in submission_files]
-    if len(set(endings)) == 1:
+    sheet_numbers = set([PC.match(f).group(2) for f in submission_files])
+    if len(sheet_numbers) == 1:
         return False
     else:
         return True
 
 
-def get_email_addresses(submission_files):
+def choose_by_email(submission_files):
     """
-    Generate the list of email addresses to which the corresponding corrected 
-    submissions are to be returned based on user's input.
+    Let the user choose which of the corrected submissions will be returned by
+    the email address in the submission file names.
 
     Args:
         submission_files (list of str): List of submission files to start from.
@@ -79,7 +79,7 @@ def get_email_addresses(submission_files):
         list of str: List of email addresses to which the corresponding
             corrected submissions are to be sent.
     """
-    addresses = _extract_email_addresses(submission_files)
+    addresses = [PC.match(f).group(1) for f in submission_files]
 
     # Print a numbered list of email addresses to select from
     numbered = []
@@ -99,10 +99,10 @@ def get_email_addresses(submission_files):
             print('Invalid input. Try again.\n')
             continue
         if selected == 'all':
-            return addresses
+            return submission_files
         else:
             try:
-                selected = [int(a) for a in selected.split()]
+                selected = [int(n) for n in selected.split()]
             except ValueError:
                 print('\nInvalid input. Try again.\n')
                 continue
@@ -110,27 +110,8 @@ def get_email_addresses(submission_files):
                 print('\nInvalid input. Try again.\n')
                 continue
             else:
-                addresses = [addresses[i - 1] for i in selected]
-                return addresses
-
-
-def _extract_email_addresses(submission_files):
-    """
-    Extract email addresses from the given corrected submission files.
-
-    Args:
-        submission_files (list of str): List of corrected submission files
-            from which email addresses are to be extracted.
-
-    Returns:
-        list of str: List of extracted email addresses.
-    """
-    addresses = []
-    for sub in submission_files:
-        address = '_'.join(sub.split('_')[:-2])
-        addresses.append(address)
-
-    return addresses
+                selected = [submission_files[i - 1] for i in selected]
+                return selected
 
 
 def read_config_file():
@@ -156,13 +137,13 @@ def read_config_file():
         return name, email
 
 
-def send_solutions(con, addresses, name=None, email=None):
+def send_solutions(con, selected, name=None, email=None):
     """
-    Send corrected submission files to the corresponding email addresses.
+    Send out the selected corrected submissions.
 
     Args:
-        addresses (list of str): List of email addresses to which
-            the corresponding corrected submission files should be sent.
+        selected (list of str): List of corrected submission file to be sent
+            out.
         con (smtplib.SMTP): Active SMTP connection to the ETH mail server.
         name (str): Space-separate name and surname of the sender. This will be
             used in the email header as well as in the signature in the body of
@@ -171,40 +152,44 @@ def send_solutions(con, addresses, name=None, email=None):
         email (str): Sender's email address. Defaults to `None` in which case
             the user is prompted for it.
     """
+    pairs = [PC.match(f).group(1, 0) for f in selected]
+    addresses = [p[0] for p in pairs]
+    sheet_number = PC.match(selected[0]).group(2)
+
     # Ask for confirmation of the submissions to be sent
     _show_confirmation_prompt(con, addresses)
 
-    # Ask for the name to be included in the signature
+    # Ask for the name to be included in the email signature
     if name is None:
         name = ''
         while name == '':
-            name = input('Your name and surname: ')
+            name = input('Your first name: ')
+        surname = ''
+        while surname == '':
+            surname = input('Your surname: ')
 
-    # Send the submissions
+    # Send out the corrected submissions
     checked = False  # indicates whether the sender's email address was checked
     unsuccessful = addresses.copy()
-    for address in addresses:
+    for address, sf in pairs:
 
         # Construct the base of the message
         msg = MIMEMultipart()
         msg['To'] = address
         msg['Date'] = formatdate(localtime=True)
-        msg['Subject'] = 'Corrected submission'
-
-        # Get the corrected submission PDF corresponding to `address`
-        pattern = re.compile(address + r'_\d+_corrected\.pdf')
-        submission = [f for f in os.listdir() if pattern.fullmatch(f)][0]
+        msg['Subject'] = f'Corrected submission {sheet_number}'
 
         # Attach the submission file
-        with open(submission, 'rb') as f:
-            attachment = MIMEApplication(f.read(), Name=submission)
-        attachment['Content-Disposition'] = f'attachment, {submission}'
+        with open(sf, 'rb') as f:
+            attachment = MIMEApplication(f.read(), Name=sf)
+        attachment['Content-Disposition'] = f'attachment, {sf}'
         msg.attach(attachment)
 
         # Attach the text
         msg.attach(MIMEText(
-            'Hi,\n\nThe corrected submission of yours is attached.\n\nBest '
-            f'regards,\n{name}'
+            'Hi,\n\nThe correction of your submission for exercise sheet '
+            f'{sheet_number} is attached.\n\nBest '
+            f"regards,\n{name + ' ' + surname}"
         ))
 
         # Fill out the sender's email address and send the message
@@ -248,9 +233,9 @@ def send_solutions(con, addresses, name=None, email=None):
                 break
 
     if not unsuccessful:
-        print('\nAll submissions were sent successfully!')
+        print('\nAll correction submissions were sent out successfully!')
     else:
-        print('\nFailed to send corrected submissions to:\n')
+        print('\nFailed to send out corrected submissions to:\n')
         print('\n'.join(unsuccessful))
 
 
@@ -280,8 +265,7 @@ def _show_confirmation_prompt(con, email_addresses):
 
 def main():
     # Get the list of corrected submission files in the directory
-    pattern = re.compile(r'.*@.*\..*_\d+_corrected\.pdf')
-    submissions = [f for f in os.listdir() if pattern.fullmatch(f)]
+    submissions = [f for f in os.listdir() if PC.fullmatch(f)]
 
     # Sanity checks
     cwd = os.getcwd()
@@ -296,9 +280,9 @@ def main():
     name, email = read_config_file()
 
     # Send out the corrected submissions
-    addresses = get_email_addresses(submissions)
+    selected = choose_by_email(submissions)
     con = connect()
-    send_solutions(con, addresses, name, email)
+    send_solutions(con, selected, name, email)
     con.quit()
 
 
