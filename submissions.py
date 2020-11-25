@@ -167,6 +167,7 @@ def send_solutions(con, selected, name=None, email=None):
         surname = ''
         while surname == '':
             surname = input('Your surname: ')
+        name = f'{name} {surname}'
 
     # Send out the corrected submissions
     checked = False  # indicates whether the sender's email address was checked
@@ -189,7 +190,7 @@ def send_solutions(con, selected, name=None, email=None):
         msg.attach(MIMEText(
             'Hi,\n\nThe correction of your submission for exercise sheet '
             f'{sheet_number} is attached.\n\nBest '
-            f"regards,\n{name + ' ' + surname}"
+            f"regards,\n{name}"
         ))
 
         # Fill out the sender's email address and send the message
