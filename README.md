@@ -43,7 +43,7 @@ The script can be executed using one of the following options:
   instance `python3 ~/course_name/exercise-1/submissions.py`.
 * You copy the script to a location included in the `PATH` environment
   variable. This will allow you to simply run `submissions.py` as a
-  command from anywhere. 
+  command from anywhere.
 
 Upon execution, the script will prompt you for authentication to the mail server
 of ETH Zurich and for some other data. The code can be easily modified for other
