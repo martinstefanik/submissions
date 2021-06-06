@@ -7,17 +7,17 @@ file name.
 See README.md for more details.
 """
 
-import os
-import sys
-import re
-import json
-import smtplib
 import getpass
+import json
+import os
+import re
+import smtplib
+import sys
 from email.header import Header
-from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formatdate, formataddr
+from email.utils import formataddr, formatdate
 
 # Pattern for a corrected submission file name
 PC = re.compile(r"(^(?!\.|.*\.\.).+[^.]\@.+\..+)_(\d+)_corrected\.pdf$")
@@ -30,20 +30,20 @@ def connect():
     Returns:
         smtplib.SMTP: Active SMTP connection.
     """
-    con = smtplib.SMTP(host='mail.ethz.ch', port=587)
+    con = smtplib.SMTP(host="mail.ethz.ch", port=587)
     con.starttls()
     while True:
-        user_name = input('\nNETZ user name: ')
-        pwd = getpass.getpass('Password: ')
+        user_name = input("\nNETZ user name: ")
+        pwd = getpass.getpass("Password: ")
         try:
             con.login(user_name, pwd)
         except smtplib.SMTPAuthenticationError:
-            print('\nWrong user name or password. Try again.')
+            print("\nWrong user name or password. Try again.")
         except smtplib.SMTPException:
-            print('\nCould not connect to the server. Try again.')
+            print("\nCould not connect to the server. Try again.")
             sys.exit()
         else:
-            print('\nConnection established!')
+            print("\nConnection established!")
             break
 
     return con
@@ -84,9 +84,9 @@ def choose_by_email(submission_files):
     # Print a numbered list of email addresses to select from
     numbered = []
     for num, address in zip(range(1, len(addresses) + 1), addresses):
-        numbered.append(f'[{num}] {address}')
-    print('\nThis directory contains submissions from: \n')
-    print('\n'.join(numbered), '\n')
+        numbered.append(f"[{num}] {address}")
+    print("\nThis directory contains submissions from: \n")
+    print("\n".join(numbered), "\n")
 
     # Selection prompt
     while True:
@@ -96,18 +96,18 @@ def choose_by_email(submission_files):
             "want to send out all submissions:\n\n"
         )
         if not selected:
-            print('Invalid input. Try again.\n')
+            print("Invalid input. Try again.\n")
             continue
-        if selected == 'all':
+        if selected == "all":
             return submission_files
         else:
             try:
                 selected = [int(n) for n in selected.split()]
             except ValueError:
-                print('\nInvalid input. Try again.\n')
+                print("\nInvalid input. Try again.\n")
                 continue
             if min(selected) < 1 or max(selected) > len(addresses):
-                print('\nInvalid input. Try again.\n')
+                print("\nInvalid input. Try again.\n")
                 continue
             else:
                 selected = [submission_files[i - 1] for i in selected]
@@ -124,13 +124,13 @@ def read_config_file():
             not correct.
     """
     config_file = os.path.join(
-        os.path.expanduser('~'), '.config', 'submissions'
+        os.path.expanduser("~"), ".config", "submissions"
     )
     try:
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             data = json.load(f)
-            name = data.pop('name', None)
-            email = data.pop('email', None)
+            name = data.pop("name", None)
+            email = data.pop("email", None)
     except (json.JSONDecodeError, FileNotFoundError):
         return None, None
     else:
@@ -161,13 +161,13 @@ def send_solutions(con, selected, name=None, email=None):
 
     # Ask for the name to be included in the email signature
     if name is None:
-        name = ''
-        while name == '':
-            name = input('Your first name: ')
-        surname = ''
-        while surname == '':
-            surname = input('Your surname: ')
-        name = f'{name} {surname}'
+        name = ""
+        while name == "":
+            name = input("Your first name: ")
+        surname = ""
+        while surname == "":
+            surname = input("Your surname: ")
+        name = f"{name} {surname}"
 
     # Send out the corrected submissions
     checked = False  # indicates whether the sender's email address was checked
@@ -176,35 +176,37 @@ def send_solutions(con, selected, name=None, email=None):
 
         # Construct the base of the message
         msg = MIMEMultipart()
-        msg['To'] = address
-        msg['Date'] = formatdate(localtime=True)
-        msg['Subject'] = f'Corrected submission {sheet_number}'
+        msg["To"] = address
+        msg["Date"] = formatdate(localtime=True)
+        msg["Subject"] = f"Corrected submission {sheet_number}"
 
         # Attach the submission file
-        with open(sf, 'rb') as f:
+        with open(sf, "rb") as f:
             attachment = MIMEApplication(f.read(), Name=sf)
-        attachment['Content-Disposition'] = f'attachment, {sf}'
+        attachment["Content-Disposition"] = f"attachment, {sf}"
         msg.attach(attachment)
 
         # Attach the text
-        msg.attach(MIMEText(
-            'Hi,\n\nThe correction of your submission for exercise sheet '
-            f'{sheet_number} is attached.\n\nBest '
-            f"regards,\n{name}"
-        ))
+        msg.attach(
+            MIMEText(
+                "Hi,\n\nThe correction of your submission for exercise sheet "
+                f"{sheet_number} is attached.\n\nBest "
+                f"regards,\n{name}"
+            )
+        )
 
         # Fill out the sender's email address and send the message
         if not checked:
             while not checked:  # check sender's address with the first email
                 if email is None:
-                    source_address = input('Your ETH email address: ')
+                    source_address = input("Your ETH email address: ")
                 else:
                     source_address = email
                 addr = formataddr((str(Header(name)), source_address))
-                if 'From' in msg:
-                    msg.replace_header('From', addr)
+                if "From" in msg:
+                    msg.replace_header("From", addr)
                 else:
-                    msg['From'] = addr
+                    msg["From"] = addr
 
                 try:
                     con.send_message(msg)
@@ -212,20 +214,20 @@ def send_solutions(con, selected, name=None, email=None):
                     unsuccessful.remove(address)
                 except (smtplib.SMTPSenderRefused, smtplib.SMTPDataError):
                     if email is None:
-                        print('\nInvalid. Try again.')
+                        print("\nInvalid. Try again.")
                     else:
                         print("Invalid email in 'submissions' config file.")
                         con.quit()
                         sys.exit()
                 except smtplib.SMTPServerDisconnected:
-                    print('\nFailed. Try re-running the script.')
+                    print("\nFailed. Try re-running the script.")
                     sys.exit()
                 except smtplib.SMTPException:
                     unsuccessful.remove(address)
                     break
 
         else:
-            msg['From'] = addr
+            msg["From"] = addr
             try:
                 con.send_message(msg)
                 unsuccessful.remove(address)
@@ -234,10 +236,10 @@ def send_solutions(con, selected, name=None, email=None):
                 break
 
     if not unsuccessful:
-        print('\nAll correction submissions were sent out successfully!')
+        print("\nAll correction submissions were sent out successfully!")
     else:
-        print('\nFailed to send out corrected submissions to:\n')
-        print('\n'.join(unsuccessful))
+        print("\nFailed to send out corrected submissions to:\n")
+        print("\n".join(unsuccessful))
 
 
 def _show_confirmation_prompt(con, email_addresses):
@@ -249,15 +251,15 @@ def _show_confirmation_prompt(con, email_addresses):
         con (smtplib.SMTP): Active SMTP connection to the ETH mail server.
         email_addresses (list of str): List of email addresses.
     """
-    print('\nCorrected submissions will be sent to:\n')
-    print('\n'.join(email_addresses), '\n')
-    proceed = ''
-    while proceed != 'y' and proceed != 'n':
-        proceed = input('Do you want to proceed? [y/n]: ')
-        if proceed == 'y':
+    print("\nCorrected submissions will be sent to:\n")
+    print("\n".join(email_addresses), "\n")
+    proceed = ""
+    while proceed != "y" and proceed != "n":
+        proceed = input("Do you want to proceed? [y/n]: ")
+        if proceed == "y":
             pass
-        elif proceed == 'n':
-            print('\nAborting.')
+        elif proceed == "n":
+            print("\nAborting.")
             con.quit()
             sys.exit()
         else:
@@ -265,16 +267,17 @@ def _show_confirmation_prompt(con, email_addresses):
 
 
 def main():
+    """Run the application."""
     # Get the list of corrected submission files in the directory
     submissions = [f for f in os.listdir() if PC.fullmatch(f)]
 
     # Sanity checks
     cwd = os.getcwd()
     if not submissions:
-        print(f'No submissions in {cwd}.')
+        print(f"No submissions in {cwd}.")
         sys.exit()
     elif has_multiple_sheets(submissions):
-        print(f'Corrected submissions for multiple sheets in {cwd}.')
+        print(f"Corrected submissions for multiple sheets in {cwd}.")
         sys.exit()
 
     # Read the config file
@@ -287,5 +290,5 @@ def main():
     con.quit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

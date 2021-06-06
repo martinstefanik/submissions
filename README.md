@@ -19,7 +19,7 @@ The script can be executed using one of the following options:
 
 * You _copy_ the script into the directory where you want to run it (that is the directory containing the corrected submission files), you open a terminal in that location and run `python3 submissions.py`.
 * You open up a terminal and change your directory to the one with the corrected submissions that you want to send back and run the same command as above but with the script name replaced by full path to the script. For instance `python3 ~/course_name/exercise-1/submissions.py`.
-* You copy the script to a location included in the `PATH` environment variable. This will allow you to simply run `submissions.py` as a command from anywhere. 
+* You copy the script to a location included in the `PATH` environment variable. This will allow you to simply run `submissions.py` as a command from anywhere.
 
 Upon execution, the script will prompt you for authentication to the mail server of ETH Zurich and for some other data. The code can be easily modified for other institutions.
 
